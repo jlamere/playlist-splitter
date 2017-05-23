@@ -7,6 +7,7 @@ var bodyParser = require('body-parser');
 var methodOverride = require('method-override');
 var SpotifyWebApi = require('spotify-web-api-node');
 var credentials = require('./credentials.json');
+
 // config
 app.use(express.static(__dirname + '/public'));                 // set the static files location /public/img will be /img for users
 app.use(morgan('dev'));                                         // log every request to the console
@@ -24,8 +25,70 @@ var spotifyApi = new SpotifyWebApi(credentials);
 console.log("Connected to the spotify API");
 
 var accessTokenPromise = spotifyApi.clientCredentialsGrant()
+var usedAttributes = ["danceability", "energy", "acousticness", "instrumentalness","liveness", "mode"]
+
 var getTracksPromise = function(username, playlist_id){
     return spotifyApi.getPlaylistTracks(username, playlist_id, { 'offset' : 0,  'fields' : 'items' }) 
+}
+
+var euclideanDistance = function(track1, track2){
+    distance = 0;
+    for(var i in track1){
+        distance += Math.pow(track1[i] - track2[i], 2);
+    }
+    return Math.sqrt(distance);
+}
+var getVector = function(tracksData){
+    vector = []
+    for (var key in tracksData[0]){
+        if (usedAttributes.indexOf(key) > -1){
+             sum = 0;
+             for (var track in tracksData){
+                    sum += tracksData[track][key]
+             }
+            vector.push(sum/tracksData.length)
+        }   
+    }
+    return vector
+}
+var clusterWithOne = function(clusters){
+    for(var i in clusters){
+        if(clusters[i].length == 1){
+            return true;
+        }
+    }
+    return false;
+}
+var agglomerate = function(clusters){
+    if (clusters.length ==  2){ 
+        return clusters;
+    }
+
+    minDistance = Number.MAX_VALUE;
+    var c1 = 0
+    var c2 = 0;
+    vectorClusters = []
+    clusters.map(function(c) {vectorClusters.push(getVector(c))});
+
+    for (var i = 0; i<clusters.length; i++){
+        // try to get straggling songs into a cluster
+        if(clusterWithOne(clusters) && clusters[i].length != 1){
+            continue;
+        }
+        for(var j = i+1; j<clusters.length; j++){
+            var e = euclideanDistance(vectorClusters[i],vectorClusters[j])
+            if(e < minDistance){
+                minDistance = e;
+                c1 = i;
+                c2 = j;
+            }
+        }
+    }
+    // merge the two clusters
+    c2Extracted = clusters[c2];
+    clusters.splice(c2, 1);
+    clusters[c1] = clusters[c1].concat(c2Extracted);
+    return agglomerate(clusters);
 }
 
 app.get('/track_data', function(req, res){
@@ -34,7 +97,7 @@ app.get('/track_data', function(req, res){
         .then(function(data){
             spotifyApi.setAccessToken(data.body['access_token']);
             console.log("access token assigned")
-            return getTracksPromise('12819242', '1d2HqfSDIpNA3Gb6WfPHMs')             
+            return getTracksPromise('12819242', '65q3lGNfxw4BiS98aavF4N')             
         })
         // playlist tracks -> track ids
         .then(function(data){
@@ -47,7 +110,10 @@ app.get('/track_data', function(req, res){
             })
             Promise.all(trackDataPromises)
                 .then(function(data){
-                    res.json(data);
+                    cleanData = data.map(function(t) {return [t.body]; });
+                    clusters = agglomerate(cleanData);
+                    res.json(clusters);
                 })
         })
 });
+
