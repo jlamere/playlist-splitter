@@ -27,13 +27,27 @@ var accessTokenPromise = spotifyApi.clientCredentialsGrant()
 var getTracksPromise = function(username, playlist_id){
     return spotifyApi.getPlaylistTracks(username, playlist_id, { 'offset' : 0,  'fields' : 'items' }) 
 }
-accessTokenPromise
-    .then(function(data){
-        spotifyApi.setAccessToken(data.body['access_token']);
-        console.log("access token assigned")
-        return getTracksPromise('12819242', '1d2HqfSDIpNA3Gb6WfPHMs')             
-    })
-    .then(function(data){
-        console.log('The playlist contains these tracks', data.body);
-    })
 
+app.get('/track_data', function(req, res){
+    var data = accessTokenPromise
+        // get an access token 
+        .then(function(data){
+            spotifyApi.setAccessToken(data.body['access_token']);
+            console.log("access token assigned")
+            return getTracksPromise('12819242', '1d2HqfSDIpNA3Gb6WfPHMs')             
+        })
+        // playlist tracks -> track ids
+        .then(function(data){
+            return data.body.items.map(function(t) {return t.track.id; });
+        })
+        .then(function(trackIds){
+            trackDataPromises = [];
+            trackIds.forEach(function(id){
+                trackDataPromises.push(spotifyApi.getAudioFeaturesForTrack(id));
+            })
+            Promise.all(trackDataPromises)
+                .then(function(data){
+                    res.json(data);
+                })
+        })
+});
