@@ -90,7 +90,18 @@ var agglomerate = function(clusters){
     clusters[c1] = clusters[c1].concat(c2Extracted);
     return agglomerate(clusters);
 }
+var descriptor = function(clusters){
+    v1 = getVector(clusters[0]);
+    v2 = getVector(clusters[1]);
 
+    var output = "Playlist 1 is ";
+
+    for (var v in v1){
+        var keyword = v1[v] > v1[v] ? "more " : "less "
+        output += keyword + usedAttributes[v] + ","
+    }
+    return output += "than playlist 2"
+}
 app.get('/track_data', function(req, res){
     var data = accessTokenPromise
         // get an access token 
@@ -112,7 +123,9 @@ app.get('/track_data', function(req, res){
                 .then(function(data){
                     cleanData = data.map(function(t) {return [t.body]; });
                     clusters = agglomerate(cleanData);
-                    res.json(clusters);
+                    output = {"description" : descriptor(clusters), 
+                              "data"        : clusters}
+                    res.json(output);
                 })
         })
 });
