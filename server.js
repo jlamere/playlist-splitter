@@ -7,7 +7,6 @@ var bodyParser = require('body-parser');
 var methodOverride = require('method-override');
 var SpotifyWebApi = require('spotify-web-api-node');
 var credentials = require('./credentials.json');
-console.log(credentials);
 // config
 app.use(express.static(__dirname + '/public'));                 // set the static files location /public/img will be /img for users
 app.use(morgan('dev'));                                         // log every request to the console
@@ -21,16 +20,20 @@ app.listen(8080);
 console.log("App listening on port 8080");
 
 // connect to the spotify api
-
-// todo move into a different file
 var spotifyApi = new SpotifyWebApi(credentials);
 console.log("Connected to the spotify API");
 
+var accessTokenPromise = spotifyApi.clientCredentialsGrant()
+var getTracksPromise = function(username, playlist_id){
+    return spotifyApi.getPlaylistTracks(username, playlist_id, { 'offset' : 0,  'fields' : 'items' }) 
+}
+accessTokenPromise
+    .then(function(data){
+        spotifyApi.setAccessToken(data.body['access_token']);
+        console.log("access token assigned")
+        return getTracksPromise('12819242', '1d2HqfSDIpNA3Gb6WfPHMs')             
+    })
+    .then(function(data){
+        console.log('The playlist contains these tracks', data.body);
+    })
 
-// Get an artist's top tracks
-spotifyApi.getArtistTopTracks('0oSGxfWSnnOXhD2fKuz2Gy', 'GB')
-  .then(function(data) {
-    console.log(data.body);
-    }, function(err) {
-    console.log('Something went wrong!', err);
-  });
