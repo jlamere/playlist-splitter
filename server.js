@@ -103,12 +103,14 @@ var descriptor = function(clusters){
     return output += "than playlist 2"
 }
 app.get('/track_data', function(req, res){
+    var user_id = req.query['user_id'];
+    var playlist_id = req.query["playlist"];
     var data = accessTokenPromise
         // get an access token 
         .then(function(data){
             spotifyApi.setAccessToken(data.body['access_token']);
             console.log("access token assigned")
-            return getTracksPromise('12819242', '65q3lGNfxw4BiS98aavF4N')             
+            return getTracksPromise(user_id, playlist_id)             
         })
         // playlist tracks -> track ids
         .then(function(data){
