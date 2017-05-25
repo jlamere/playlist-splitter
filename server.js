@@ -16,22 +16,13 @@ app.use(bodyParser.json());                                     // parse applica
 app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse application/vnd.api+json as json
 app.use(methodOverride());
 
-// start up
-app.listen(8080);
-console.log("App listening on port 8080");
 
-// connect to the spotify api
-let spotifyApi = new SpotifyWebApi(credentials);
-console.log("Connected to the spotify API");
 
-let accessTokenPromise = spotifyApi.clientCredentialsGrant()
+
 let usedAttributes = ["danceability", "energy", "acousticness", "instrumentalness","liveness", "mode"]
 
-let getTracksPromise = (username, playlist_id) => {
-    return spotifyApi.getPlaylistTracks(username, playlist_id, { 'offset' : 0,  'fields' : 'items' }) 
-}
 
-app.get('/track_data', (req, res) => {
+app.get('/split', (req, res) => {
     const user_id = req.query['user_id'];
     const playlist_id = req.query["playlist"];
     let data = accessTokenPromise
@@ -49,14 +40,47 @@ app.get('/track_data', (req, res) => {
             trackIds.map(t => trackDataPromises.push(spotifyApi.getAudioFeaturesForTrack(t)))
             Promise.all(trackDataPromises)
                 .then((data) => {
-                    cleanData = data.map((t)=> {return [t.body]; });
+                    cleanData = data.map((t)=> {return [t.body]; })
                     clusters = agglomerate(cleanData);
                     output = {"description" : descriptor(clusters), 
                               "data"        : clusters}
-                    res.json(output);
+                    res.json(output)
+                    return data
+                })
+                .then((data) =>{
+                    console.log(data)
+                    spotifyApi.createPlaylist(user_id, 'My Cool Playlist', { 'public' : true })
+
                 })
         })
 })
+
+app.get('/login', function(req, res) {
+    let scopes = ['user-read-private','user-modify-private']
+    let redirect_uri = "http://localhost:8080/"
+    let state = "12345"
+    //TODO add state
+    http://localhost:8080/%22https://accounts.spotify.com/authorize?client_id=359c1f92631f421a83972f9622d26972&response_type=code&redirect_uri=http://localhost:8080/&scope=user-read-private%20user-modify-private&state=12345%22
+    var authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
+    //res.json('https://accounts.spotify.com/authorize?client_id='+credentials['clientId']+'&response_type=code&redirect_uri='+credentials['redirectUri']+'&scope='+scopes.join(' '))
+    res.json(authorizeURL);
+});
+
+app.get('*', function(req, res) {
+        res.sendfile('./public/index.html'); // load the single view file (angular will handle the page changes on the front-end)
+    });
+
+// start up
+app.listen(8080);
+console.log("App listening on port 8080");
+
+// connect to the spotify api
+let spotifyApi = new SpotifyWebApi(credentials);
+console.log("Connected to the spotify API");
+let accessTokenPromise = spotifyApi.clientCredentialsGrant()
+let getTracksPromise = (username, playlist_id) => {
+    return spotifyApi.getPlaylistTracks(username, playlist_id, { 'offset' : 0,  'fields' : 'items' }) 
+}
 
 let euclideanDistance = (track1, track2) => {
     let distance = 0
