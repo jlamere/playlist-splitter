@@ -57,17 +57,14 @@ app.get('/split', (req, res) => {
 
 app.get('/login', function(req, res) {
     let scopes = ['user-read-private','user-modify-private']
-    let redirect_uri = "http://localhost:8080/"
     let state = "12345"
     //TODO add state
-    http://localhost:8080/%22https://accounts.spotify.com/authorize?client_id=359c1f92631f421a83972f9622d26972&response_type=code&redirect_uri=http://localhost:8080/&scope=user-read-private%20user-modify-private&state=12345%22
     var authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
-    //res.json('https://accounts.spotify.com/authorize?client_id='+credentials['clientId']+'&response_type=code&redirect_uri='+credentials['redirectUri']+'&scope='+scopes.join(' '))
     res.json(authorizeURL);
 });
 
 app.get('*', function(req, res) {
-        res.sendfile('./public/index.html'); // load the single view file (angular will handle the page changes on the front-end)
+        res.sendfile('./public/views/index.html'); // load the single view file (angular will handle the page changes on the front-end)
     });
 
 // start up
